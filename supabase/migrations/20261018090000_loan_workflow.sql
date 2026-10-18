@@ -44,6 +44,32 @@ create policy "Applicants submit own applications" on public.loan_applications f
 create policy "Applicants withdraw or reviewers update applications" on public.loan_applications for update to authenticated
 using ((applicant_id=(select auth.uid()) and status in ('submitted','under_review')) or (select auth.jwt()->'app_metadata'->>'role')='reviewer')
 with check ((applicant_id=(select auth.uid()) and status='withdrawn') or (select auth.jwt()->'app_metadata'->>'role')='reviewer');
+create or replace function public.guard_loan_application_update()
+returns trigger language plpgsql set search_path=public,pg_temp as $
+begin
+  if (select auth.jwt()->'app_metadata'->>'role')='reviewer' then return new; end if;
+  if old.applicant_id is distinct from (select auth.uid())
+    or old.status not in ('submitted','under_review') or new.status <> 'withdrawn'
+    or new.applicant_id is distinct from old.applicant_id
+    or new.applicant_name is distinct from old.applicant_name
+    or new.email is distinct from old.email or new.phone is distinct from old.phone
+    or new.employment_status is distinct from old.employment_status
+    or new.monthly_income is distinct from old.monthly_income
+    or new.requested_amount is distinct from old.requested_amount
+    or new.loan_purpose is distinct from old.loan_purpose
+    or new.repayment_months is distinct from old.repayment_months
+    or new.reviewer_notes is distinct from old.reviewer_notes
+    or new.reviewed_by is distinct from old.reviewed_by
+    or new.reviewed_at is distinct from old.reviewed_at
+    or new.created_at is distinct from old.created_at then
+    raise exception 'Applicants may only withdraw their own open applications.' using errcode='42501';
+  end if;
+  return new;
+end;
+$;
+revoke all on function public.guard_loan_application_update() from public,anon,authenticated;
+create trigger guard_loan_application_update before update on public.loan_applications
+for each row execute function public.guard_loan_application_update();
 create policy "Applicants view own events; reviewers view all" on public.application_events for select to authenticated using (exists (select 1 from public.loan_applications a where a.id=application_events.application_id and (a.applicant_id=(select auth.uid()) or (select auth.jwt()->'app_metadata'->>'role')='reviewer')));
 create policy "Actors add valid application events" on public.application_events for insert to authenticated with check (
  actor_id=(select auth.uid()) and (
