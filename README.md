@@ -1,17 +1,27 @@
 # ClearPath Loan Application Portal
 
-A human-reviewed loan application workflow with applicant sign-in, application submission, status tracking, and a reviewer queue.
+A human-reviewed loan application workflow with applicant sign-in, submission, status tracking, and a reviewer queue.
 
 ## Stack
 - Static HTML/CSS/JavaScript
-- Supabase Auth and PostgreSQL with row-level security
+- Supabase Auth + PostgreSQL with row-level security
 - Vercel hosting
 
+## Features
+- Email/password applicant accounts
+- Persisted loan applications with validation for requested amount, income, purpose, employment status, and repayment term
+- Applicant dashboard with current status and application event history
+- Applicant withdrawal while an application is still submitted or under review
+- Reviewer queue with status decisions and reviewer notes
+- Row-level security separates applicants' records from the reviewer queue
+- Application events record submission, withdrawal, status change, and reviewer notes
+
 ## Setup
-1. The database schema is provisioned in Supabase project jztuppacqwmfcsigskbe.
-2. Configure email/password authentication in Supabase.
-3. supabase-config.js uses the project's URL and public publishable key.
-4. For staff review, assign the reviewer role in Supabase Auth app metadata (never user-editable metadata). The frontend checks app_metadata.role === reviewer.
+1. Apply `supabase/migrations/20261018090000_loan_workflow.sql` to a fresh Supabase project.
+2. Enable email/password authentication and configure allowed redirect URLs for your domain.
+3. Put the project's Supabase URL and **publishable key only** in `supabase-config.js`. Never put a service-role key in frontend files.
+4. For staff review, assign reviewer role in Supabase Auth **app metadata** (never user-editable metadata). The reviewer UI checks `app_metadata.role === "reviewer"`.
+5. Configure password security, privacy notice, retention policy, identity verification, and the actual lending policy before accepting real applications.
 
 ## Important
-This is a workflow tool, not an automated creditworthiness engine. Configure lending policy, identity checks, privacy notices, retention, regulatory controls, and reviewer authorization before accepting real applications. The reviewer UI expects role claims to be managed by a trusted administrator.
+This is an application workflow, not an automated creditworthiness engine. A human reviewer must make lending decisions under a documented and compliant policy. Do not use the demo for real lending until it has been reviewed for applicable financial-services, consumer-protection, and data-protection requirements.
