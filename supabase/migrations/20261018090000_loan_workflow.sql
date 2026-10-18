@@ -41,8 +41,9 @@ create policy "Users create own applicant profile" on public.profiles for insert
 create policy "Users update own applicant profile" on public.profiles for update to authenticated using (id=(select auth.uid()) and role='applicant') with check (id=(select auth.uid()) and role='applicant');
 create policy "Applicants view own applications; reviewers view all" on public.loan_applications for select to authenticated using (applicant_id=(select auth.uid()) or (select auth.jwt()->'app_metadata'->>'role')='reviewer');
 create policy "Applicants submit own applications" on public.loan_applications for insert to authenticated with check (applicant_id=(select auth.uid()) and status='submitted');
-create policy "Applicants withdraw own applications" on public.loan_applications for update to authenticated using (applicant_id=(select auth.uid()) and status in ('submitted','under_review')) with check (applicant_id=(select auth.uid()) and status='withdrawn');
-create policy "Reviewers update applications" on public.loan_applications for update to authenticated using ((select auth.jwt()->'app_metadata'->>'role')='reviewer') with check ((select auth.jwt()->'app_metadata'->>'role')='reviewer');
+create policy "Applicants withdraw or reviewers update applications" on public.loan_applications for update to authenticated
+using ((applicant_id=(select auth.uid()) and status in ('submitted','under_review')) or (select auth.jwt()->'app_metadata'->>'role')='reviewer')
+with check ((applicant_id=(select auth.uid()) and status='withdrawn') or (select auth.jwt()->'app_metadata'->>'role')='reviewer');
 create policy "Applicants view own events; reviewers view all" on public.application_events for select to authenticated using (exists (select 1 from public.loan_applications a where a.id=application_events.application_id and (a.applicant_id=(select auth.uid()) or (select auth.jwt()->'app_metadata'->>'role')='reviewer')));
 create policy "Actors add valid application events" on public.application_events for insert to authenticated with check (
  actor_id=(select auth.uid()) and (
